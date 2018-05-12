@@ -32,15 +32,13 @@
 	<body>
 		<script src="bundle.js"></script>
 		<script src="OBJLoader.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/controls/OrbitControls.js"></script>
 		<script>
 			// SETUP -- don't touch
 			var THREE = require('three');
 
-			var SCREEN_WIDTH  = window.innerWidth;
-			var SCREEN_HEIGHT = window.innerHeight;
 			var container;
-			var camera, scene, renderer;
-			var mouseX = 0, mouseY = 0;
+			var camera, controls, scene, renderer;
 			var windowHalfX = window.innerWidth / 2;
 			var windowHalfY = window.innerHeight / 2;
 
@@ -51,8 +49,23 @@
 			function init() {
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
-				camera = new THREE.PerspectiveCamera( 35, SCREEN_WIDTH / SCREEN_HEIGHT, 1, 5000 );
-				camera.position.z = 1500;
+				
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				document.body.appendChild( renderer.domElement );
+
+				camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 1, 5000 );
+				
+				// CONTROLS
+				controls = new THREE.OrbitControls( camera, renderer.domElement );
+				controls.enableDamping = true; 
+				controls.dampingFactor = 0.25;
+				controls.screenSpacePanning = false;
+				controls.minDistance   = 1000;
+				controls.maxDistance   = 2000
+				controls.maxPolarAngle = Math.PI / 2;
+
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0x000000 );
 				scene.fog = new THREE.Fog( 0x000000, 1500, 4000 );
@@ -147,30 +160,19 @@
 
 				loadNextFile();
 
-				// RENDERER -- don't touch
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
-				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
-				renderer.autoClear = false;
-				renderer.domElement.style.position = "relative";
-				container.appendChild( renderer.domElement );
-				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				window.addEventListener( 'resize', onWindowResize, false );
 			}
-
-			// ANIMATION -- don't touch
-			function onDocumentMouseMove(event) {
-				mouseX = ( event.clientX - windowHalfX );
-				mouseY = ( event.clientY - windowHalfY );
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
 			}
 			function animate() {
 				requestAnimationFrame( animate );
+				controls.update(); 
 				render();
 			}
 			function render() {
-				camera.position.x = 600.0;
-				camera.position.y = 600.0;
-				camera.position.z = 1600.0;
-				camera.lookAt( scene.position );
 				renderer.clear();
 				renderer.render( scene, camera );
 			}
