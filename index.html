@@ -31,6 +31,7 @@
 
 	<body>
 		<script src="bundle.js"></script>
+		<script src="OBJLoader.js"></script>
 		<script>
 			// SETUP -- don't touch
 			var THREE = require('three');
@@ -42,6 +43,7 @@
 			var mouseX = 0, mouseY = 0;
 			var windowHalfX = window.innerWidth / 2;
 			var windowHalfY = window.innerHeight / 2;
+
 			init();
 			animate();
 
@@ -102,6 +104,35 @@
 				texturePainting.minFilter = texturePainting.magFilter = THREE.LinearFilter;
 				texturePainting.mapping = THREE.UVMapping;
 				
+				// CHESS PIECES -- MODIFY positions
+				var index = 0;
+				var files_positions = {
+					'models/Bishop.obj': [0],
+					'models/Knight.obj': [],
+					'models/King.obj':   [],
+					'models/Queen.obj':  [],
+					'models/Pawn.obj':   []
+				};
+
+				var loader = new THREE.OBJLoader();
+				var files  = Object.keys(files_positions);
+				function loadNextFile() {
+				  	if (index > files.length - 1) return;
+
+				  	var positions = files_positions[files[index]];
+				  	for (var i = 0; i < positions.length; i++) {
+				  		loader.load(files[index], function(object) {
+							object.position.x = positions[0];
+							object.scale.multiplyScalar(5.0);
+							scene.add(object);
+						});
+					}
+					index++;
+					loadNextFile();
+				}
+
+				loadNextFile();
+
 				// RENDERER -- don't touch
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
