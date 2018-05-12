@@ -79,24 +79,15 @@
 				var callbackPainting = function() {
 					var image = texturePainting.image;
 					scene.add( meshCanvas );
-					var geometry = new THREE.PlaneBufferGeometry( 100, 100 );
+					// var geometry = new THREE.PlaneBufferGeometry( 100, 100 );
+					var geometry = new THREE.BoxGeometry( 100, 100, 30 );
 					var mesh = new THREE.Mesh( geometry, materialPainting );
-					addPainting( scene, mesh );
 
-					function addPainting( zscene, zmesh ) {
-						zmesh.rotation.x = - Math.PI / 2;
-						zmesh.scale.x    = image.width / 100;
-						zmesh.scale.y    = image.height / 100;
-						zscene.add( zmesh );
-
-						var meshFrame = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { color: 0x000000 } ) );
-						meshFrame.rotation.x = - Math.PI / 2;
-						meshFrame.scale.x    = 1.1 * image.width / 100;
-						meshFrame.scale.y    = 1.1 * image.height / 100;
-						zscene.add( meshFrame );
-
-						meshCanvas.position.y = 0.0;
-					}
+					mesh.rotation.x = - Math.PI / 2;
+					mesh.position.y = 15.0;
+					mesh.scale.x    = image.width / 100;
+					mesh.scale.y    = image.height / 100;
+					scene.add( mesh );
 				};
 
 				var texturePainting = new THREE.TextureLoader().load( "textures/chess.jpg", callbackPainting );
@@ -106,27 +97,50 @@
 				
 				// CHESS PIECES -- MODIFY positions
 				var index = 0;
-				var files_positions = {
-					'models/Bishop.obj': [0],
-					'models/Knight.obj': [],
-					'models/King.obj':   [],
-					'models/Queen.obj':  [],
-					'models/Pawn.obj':   []
+				var files_square = {
+					'models/King.obj'  : [
+						[4,1],
+						[4,8]
+					],
+					'models/Queen.obj' : [
+						[5,1],
+						[5,8]
+					],
+					'models/Bishop.obj': [
+						[3,1],[6,1],
+						[3,8],[6,8]
+					],
+					'models/Knight.obj': [
+						[2,1],[7,1],
+						[2,8],[7,8]
+					],
+					'models/Rook.obj'  : [
+						[1,1],[8,1],
+						[1,8],[8,8]
+					],
+					'models/Pawn.obj'  : [
+						[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[8,2],
+						[1,7],[2,7],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7]
+					],
 				};
 
 				var loader = new THREE.OBJLoader();
-				var files  = Object.keys(files_positions);
+				var files  = Object.keys(files_square);
 				function loadNextFile() {
-				  	if (index > files.length - 1) return;
+					if (index > files.length - 1) return;
 
-				  	var positions = files_positions[files[index]];
-				  	for (var i = 0; i < positions.length; i++) {
-				  		loader.load(files[index], function(object) {
-							object.position.x = positions[0];
-							object.scale.multiplyScalar(5.0);
-							scene.add(object);
-						});
-					}
+					var squares = files_square[files[index]];
+					
+					loader.load(files[index], function(object) {
+						object.scale.multiplyScalar(5.0);
+						object.position.y = 15.0;
+						for (var i = 0; i < squares.length; i++) {
+							var objInstance = object.clone();
+							objInstance.position.x = 75 + 150 * (squares[i][0] - 5);
+							objInstance.position.z = 75 + 150 * (squares[i][1] - 5);
+							scene.add(objInstance);
+						}
+					});
 					index++;
 					loadNextFile();
 				}
