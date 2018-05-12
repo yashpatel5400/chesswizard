@@ -1,0 +1,28 @@
+{
+  "name": "chesswizard",
+  "version": "1.0.0",
+  "description": "Wizard chess game",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yashpatel5400/chesswizard.git"
+  },
+  "keywords": [
+    "chess",
+    "wizard",
+    "harry",
+    "potter",
+    "graphics",
+    "three",
+    "cos426"
+  ],
+  "author": "Yash Patel, Korle Akiti",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yashpatel5400/chesswizard/issues"
+  },
+  "homepage": "https://github.com/yashpatel5400/chesswizard#readme"
+}
