@@ -167,8 +167,9 @@
 				render();
 			}
 			function render() {
-				camera.position.x += ( mouseX - camera.position.x ) * .05;
-				camera.position.y += ( - ( mouseY - 200) - camera.position.y ) * .05;
+				camera.position.x = 600.0;
+				camera.position.y = 600.0;
+				camera.position.z = 1600.0;
 				camera.lookAt( scene.position );
 				renderer.clear();
 				renderer.render( scene, camera );
