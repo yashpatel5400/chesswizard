@@ -65,7 +65,16 @@
 				// ["BR","BN","BB","BK","BQ","BB","BN","BR"]
 			];
 			var toMove = null;
-			var destination = null;
+			var sourceSquare = null;
+			var destinationSquare = null;
+			var k = 0;
+
+			function vectorFromSquare(i, j) {
+				return new THREE.Vector3(
+					75 + 150 * (5 - i),
+					15.0,
+					75 + 150 * (j - 5));
+			}
 
 			function xyzFromSquare(object, i, j) {
 				object.position.x = 75 + 150 * (5 - i);
@@ -196,6 +205,7 @@
 							if (color == "OffBlack" || color == "Black")
 								object.color = "B";
 							else object.color = "W";
+							object.piece = piece;
 
 							object.scale.multiplyScalar(7.5);
 							xyzFromSquare(object, squares[0], squares[1]);
@@ -226,23 +236,19 @@
 				raycaster.setFromCamera( mouse, camera );
 				var intersects = raycaster.intersectObjects( tiles, true );
 				if ( intersects.length > 0 ) {
-					// selecting a piece to move
-					if (toMove == null) {
-						var selectedSquare = intersects[0].object.square;
-						toMove = board[selectedSquare[0] - 1][selectedSquare[1] - 1];
-						if (toMove != null && toMove.color == currentPlayer)
-							board[selectedSquare[0] - 1][selectedSquare[1] - 1] = null;
-						else toMove = null;	
-					}
+					// selecting a piece to move; checks k to make sure no animation ongoing
+					if (k == 0) {
+						if (toMove == null) {
+							sourceSquare = intersects[0].object.square;
+							toMove = board[sourceSquare[0] - 1][sourceSquare[1] - 1];
+							if (toMove != null && toMove.color == currentPlayer)
+								board[sourceSquare[0] - 1][sourceSquare[1] - 1] = null;
+							else toMove = null;	
+						}
 
-					else {
-						var destinationSquare = intersects[0].object.square;
-						board[destinationSquare[0] - 1][destinationSquare[1] - 1] = toMove;
-						xyzFromSquare(toMove, destinationSquare[0], destinationSquare[1]);
-						toMove = null;
-
-						if (currentPlayer == "W") currentPlayer = "B";
-						else                      currentPlayer = "W";
+						else {
+							destinationSquare = intersects[0].object.square;
+						}
 					}
 				} 
 			}
@@ -253,7 +259,34 @@
 			}
 			function animate() {
 				requestAnimationFrame( animate );
+
 				controls.update(); 
+				
+				// does animation if a piece is moving
+				if (destinationSquare != null) {
+					board[destinationSquare[0] - 1][destinationSquare[1] - 1] = toMove;
+					
+					var startPos = vectorFromSquare(sourceSquare[0],sourceSquare[1]);
+					var endPos   = vectorFromSquare(destinationSquare[0],destinationSquare[1]);
+					
+					alpha = k / 100.0;
+					var newPos = startPos.clone().multiplyScalar(1 - alpha).add(
+						endPos.clone().multiplyScalar(alpha));
+					toMove.position.x = newPos.x;
+					toMove.position.y = newPos.y;
+					toMove.position.z = newPos.z;
+					k += 1;
+				}
+
+				if (k > 100) {
+					k = 0;
+					toMove = null;
+					destinationSquare = null;
+
+					if (currentPlayer == "W") currentPlayer = "B";
+					else                      currentPlayer = "W";
+				}
+
 				render();
 			}
 			function render() {
