@@ -133,8 +133,8 @@
 					for (var i = 1; i < 9; i++) {
 						for (var j = 1; j < 9; j++) {
 							var curMesh; 
-							if ((i + j) % 2 == 0) curMesh = darkMesh;
-							else                  curMesh = lightMesh;
+							if ((i + j) % 2 == 0) curMesh = lightMesh;
+							else                  curMesh = darkMesh;
 
 							var tile = curMesh.clone();
 							xyzFromSquare(tile, i, j);
@@ -372,14 +372,21 @@
 				if (destinationSquare != null) {
 					var startPos = vectorFromSquare(sourceSquare[0],sourceSquare[1]);
 					var endPos   = vectorFromSquare(destinationSquare[0],destinationSquare[1]);
+					var dist     = Math.abs(destinationSquare[0] - sourceSquare[0]);
+					if (dist == 0) dist = Math.abs(destinationSquare[1] - sourceSquare[1]);
+					var period   = 100.0 / dist;
 					
 					alpha = k / 100.0;
 					var newPos = startPos.clone().multiplyScalar(1 - alpha).add(
 						endPos.clone().multiplyScalar(alpha));
 					toMove.position.x = newPos.x;
-					toMove.position.y = newPos.y;
+					toMove.position.y = 15.0 + 45.0 * Math.abs(Math.sin(
+						k * (Math.PI / period)));
+					
 					toMove.position.z = newPos.z;
 					k += 1;
+					// 1 -> 100;
+					// 4 -> 25;
 				}
 
 				if (k > 100) { // animation completed
