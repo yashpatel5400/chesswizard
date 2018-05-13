@@ -40,12 +40,19 @@
 			var THREE = require('three');
 
 			var container;
-			var camera, controls, scene, renderer;
-			var windowHalfX = window.innerWidth / 2;
-			var windowHalfY = window.innerHeight / 2;
+			var camera, controls, scene, renderer, raycaster;
+
+			var mouse = new THREE.Vector2(), INTERSECTED;
+			var tiles = [];
 
 			init();
 			animate();
+
+			function xyzFromSquare(object, i, j) {
+				object.position.x = 75 + 150 * (i - 5);
+				object.position.y = 15.0;
+				object.position.z = 75 + 150 * (j - 5);
+			}
 
 			// scene setup -- MODIFY THIS
 			function init() {
@@ -56,6 +63,8 @@
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );
+
+				raycaster = new THREE.Raycaster();
 
 				camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 1, 5000 );
 
@@ -89,26 +98,41 @@
 				var meshCanvas = new THREE.Mesh( geometry, materialCanvas );
 				meshCanvas.rotation.x = - Math.PI / 2;
 				meshCanvas.scale.set( 50, 50, 10 );
+				scene.add( meshCanvas );
 
 				// BOARD
 				var callbackPainting = function() {
 					var image = texturePainting.image;
-					scene.add( meshCanvas );
-					var geometry = new THREE.BoxGeometry( 100, 100, 30 );
-					var mesh = new THREE.Mesh( geometry, materialPainting );
+					var geometry = new THREE.BoxGeometry( 12.5, 12.5, 30 );
+					var lightMesh = new THREE.Mesh( geometry, lightTile );
+					var darkMesh  = new THREE.Mesh( geometry, darkTile );
 
-					mesh.rotation.x = - Math.PI / 2;
-					mesh.position.y = 15.0;
-					mesh.scale.x    = image.width / 100;
-					mesh.scale.y    = image.height / 100;
-					scene.add( mesh );
+					lightMesh.rotation.x = - Math.PI / 2;
+					lightMesh.scale.x    = image.width / 100;
+					lightMesh.scale.y    = image.height / 100;
+
+					darkMesh.rotation.x  = - Math.PI / 2;
+					darkMesh.scale.x     = image.width / 100;
+					darkMesh.scale.y     = image.height / 100;
+
+					for (var i = 1; i < 9; i++) {
+						for (var j = 1; j < 9; j++) {
+							var curMesh; 
+							if ((i + j) % 2 == 0) curMesh = lightMesh;
+							else                curMesh = darkMesh;
+
+							var tile = curMesh.clone();
+							xyzFromSquare(tile, i, j);
+							tiles.push(tile);
+							scene.add(tile);
+						}
+					}
 				};
 
 				var texturePainting = new THREE.TextureLoader().load( "textures/chess.jpg", callbackPainting );
-				var materialPainting = new THREE.MeshBasicMaterial( { color: 0xffffff, map: texturePainting } );
-				texturePainting.minFilter = texturePainting.magFilter = THREE.LinearFilter;
-				texturePainting.mapping = THREE.UVMapping;
-				
+				var lightTile = new THREE.MeshBasicMaterial( { color: 0xe8d8c3 } );
+				var darkTile  = new THREE.MeshBasicMaterial( { color: 0xbc9055 } );
+
 				// CHESS PIECES -- MODIFY positions
 				var index = 0;
 				// had to do this format rather than hashtable due to asynch loading issues
@@ -149,9 +173,7 @@
 						loader.setMaterials(materials);
 						loader.load(file, function(object) {
 							object.scale.multiplyScalar(7.5);
-							object.position.x = 75 + 150 * (squares[0] - 5);
-							object.position.y = 15.0;
-							object.position.z = 75 + 150 * (squares[1] - 5);
+							xyzFromSquare(object, squares[0], squares[1]);
 							scene.add(object);
 						});
 					});
@@ -166,7 +188,19 @@
 				scene.add( ambientLight );
 
 				window.addEventListener( 'resize', onWindowResize, false );
+				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 			}
+
+			function onDocumentMouseDown( e ) {
+				e.preventDefault();
+				
+				raycaster.setFromCamera( mouse, camera );
+				var intersects = raycaster.intersectObjects( tiles, true );
+				if ( intersects.length > 0 ) {
+					intersects[0].object.visible = false;
+				} 
+			}
+
 			function onWindowResize() {
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
@@ -178,7 +212,6 @@
 				render();
 			}
 			function render() {
-				renderer.clear();
 				renderer.render( scene, camera );
 			}
 		</script>
