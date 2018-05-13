@@ -32,7 +32,9 @@
 	<body>
 		<script src="bundle.js"></script>
 		<script src="OBJLoader.js"></script>
-		<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/controls/OrbitControls.js"></script>
+		<script src="MTLLoader.js"></script>
+		<script src="OrbitControls.js"></script>
+
 		<script>
 			// SETUP -- don't touch
 			var THREE = require('three');
@@ -56,7 +58,7 @@
 				document.body.appendChild( renderer.domElement );
 
 				camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 1, 5000 );
-				
+
 				// CONTROLS
 				controls = new THREE.OrbitControls( camera, renderer.domElement );
 				controls.enableDamping = true; 
@@ -80,9 +82,9 @@
 				context.fillRect( 0, 0, 64, 64);
 				context.fillRect( 64, 64, 64, 64 );
 
-				var textureCanvas = new THREE.TextureLoader().load( "textures/table.jpg", callbackPainting );
+				var textureCanvas  = new THREE.TextureLoader().load("textures/table.jpg");
 				var	materialCanvas = new THREE.MeshBasicMaterial( { map: textureCanvas } );
-				var geometry = new THREE.PlaneBufferGeometry( 100, 100 );
+				var geometry       = new THREE.PlaneBufferGeometry( 100, 100 );
 				
 				var meshCanvas = new THREE.Mesh( geometry, materialCanvas );
 				meshCanvas.rotation.x = - Math.PI / 2;
@@ -92,7 +94,6 @@
 				var callbackPainting = function() {
 					var image = texturePainting.image;
 					scene.add( meshCanvas );
-					// var geometry = new THREE.PlaneBufferGeometry( 100, 100 );
 					var geometry = new THREE.BoxGeometry( 100, 100, 30 );
 					var mesh = new THREE.Mesh( geometry, materialPainting );
 
@@ -110,55 +111,59 @@
 				
 				// CHESS PIECES -- MODIFY positions
 				var index = 0;
-				var files_square = {
-					'models/King.obj'  : [
-						[4,1],
-						[4,8]
-					],
-					'models/Queen.obj' : [
-						[5,1],
-						[5,8]
-					],
-					'models/Bishop.obj': [
-						[3,1],[6,1],
-						[3,8],[6,8]
-					],
-					'models/Knight.obj': [
-						[2,1],[7,1],
-						[2,8],[7,8]
-					],
-					'models/Rook.obj'  : [
-						[1,1],[8,1],
-						[1,8],[8,8]
-					],
-					'models/Pawn.obj'  : [
-						[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[8,2],
-						[1,7],[2,7],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7]
-					],
-				};
+				// had to do this format rather than hashtable due to asynch loading issues
+				var files = [
+					['King',4,1,'White'],
+					['King',4,8,'Black'],
 
-				var loader = new THREE.OBJLoader();
-				var files  = Object.keys(files_square);
+					['Queen',5,1,'White'],
+					['Queen',5,8,'Black'],
+
+					['Bishop',3,1,'White'],['Bishop',6,1,'White'],
+					['Bishop',3,8,'Black'],['Bishop',6,8,'Black'],
+
+					['Knight',2,1,'Black'],['Knight',7,1,'Black'],
+					['Knight',2,8,'OffBlack'],['Knight',7,8,'OffBlack'],
+					
+					['Rook',1,1,'White'],['Rook',8,1,'White'],
+					['Rook',1,8,'OffBlack'],['Rook',8,8,'OffBlack'],
+					
+					['Pawn',1,2,'White'],['Pawn',2,2,'White'],['Pawn',3,2,'White'],['Pawn',4,2,'White'],['Pawn',5,2,'White'],['Pawn',6,2,'White'],['Pawn',7,2,'White'],['Pawn',8,2,'White'],
+					['Pawn',1,7,'OffBlack'],['Pawn',2,7,'OffBlack'],['Pawn',3,7,'OffBlack'],['Pawn',4,7,'OffBlack'],['Pawn',5,7,'OffBlack'],['Pawn',6,7,'OffBlack'],['Pawn',7,7,'OffBlack'],['Pawn',8,7,'OffBlack']
+				];
+
+				var mtlLoader = new THREE.MTLLoader();
 				function loadNextFile() {
 					if (index > files.length - 1) return;
 
-					var squares = files_square[files[index]];
+					var piece   = files[index][0];
+					var squares = files[index].slice(1,);
+					var color   = files[index][3];
+
+					var file    = `models/${piece}.obj`;
+					var material= `models/${color}.mtl`;
 					
-					loader.load(files[index], function(object) {
-						object.scale.multiplyScalar(5.0);
-						object.position.y = 15.0;
-						for (var i = 0; i < squares.length; i++) {
-							var objInstance = object.clone();
-							objInstance.position.x = 75 + 150 * (squares[i][0] - 5);
-							objInstance.position.z = 75 + 150 * (squares[i][1] - 5);
-							scene.add(objInstance);
-						}
+					mtlLoader.load(material, function( materials ) {
+						materials.preload();
+						var loader = new THREE.OBJLoader();
+						loader.setMaterials(materials);
+						loader.load(file, function(object) {
+							object.scale.multiplyScalar(7.5);
+							object.position.x = 75 + 150 * (squares[0] - 5);
+							object.position.y = 15.0;
+							object.position.z = 75 + 150 * (squares[1] - 5);
+							scene.add(object);
+						});
 					});
+
 					index++;
 					loadNextFile();
 				}
 
 				loadNextFile();
+
+				var ambientLight = new THREE.AmbientLight( 0xcccccc, 0.75 );
+				scene.add( ambientLight );
 
 				window.addEventListener( 'resize', onWindowResize, false );
 			}
