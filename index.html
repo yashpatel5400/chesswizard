@@ -50,20 +50,7 @@
 
 			// internal representation of the board
 			var currentPlayer = "W";
-			var board = [
-				// ["WR","WN","WB","WK","WQ","WB","WN","WR"],
-				// ["WP","WP","WP","WP","WP","WP","WP","WP"],
-				[null,null,null,null,null,null,null,null],
-				[null,null,null,null,null,null,null,null],
-				[null,null,null,null,null,null,null,null],
-				[null,null,null,null,null,null,null,null],
-				[null,null,null,null,null,null,null,null],
-				[null,null,null,null,null,null,null,null],
-				[null,null,null,null,null,null,null,null],
-				[null,null,null,null,null,null,null,null]
-				// ["BP","BP","BP","BP","BP","BP","BP","BP"],
-				// ["BR","BN","BB","BK","BQ","BB","BN","BR"]
-			];
+			var board;
 			var toMove = null;
 			var sourceSquare = null;
 			var destinationSquare = null;
@@ -164,6 +151,17 @@
 				var darkTile  = new THREE.MeshBasicMaterial( { color: 0xbc9055 } );
 
 				// CHESS PIECES -- MODIFY positions
+				board = [
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null]
+				];
+
 				var index = 0;
 				// had to do this format rather than hashtable due to asynch loading issues
 				var files = [
@@ -227,15 +225,48 @@
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 			}
 
+			function _checkPath(color, testSource, testDestination, type) {
+				var dist, start, end;
+				var xMultiplier, yMultiplier;
+				if (type == "vertical") {
+					start = Math.min(testSource[1],testDestination[1]);
+					end   = Math.max(testSource[1],testDestination[1]);
+					dist  = Math.abs(end - start);
+				}
+				else if (type == "horizontal") {
+					start = Math.min(testSource[0],testDestination[0]);
+					end   = Math.max(testSource[0],testDestination[0]);
+					dist  = Math.abs(end - start);
+				}
+				else if (type == "diagonal") {
+					if (testSource[0] > testDestination[0]) xMultiplier = -1;
+					else                                    xMultiplier = 1;
+
+					if (testSource[1] > testDestination[1]) yMultiplier = -1;
+					else                                    yMultiplier = 1;
+					dist = Math.abs(testDestination[0] - testSource[0]);
+				}
+
+				for (var i = 1; i < dist; i++) {
+					var destinationPiece;
+					if (type == "vertical") destinationPiece = 
+						board[testSource[0] - 1][start + i - 1];
+					else if (type == "horizontal") destinationPiece = 
+						board[start + i - 1][testSource[1] - 1];
+					else if (type == "diagonal") destinationPiece = 
+						board[testSource[0] + i * xMultiplier - 1][testSource[1] + i * yMultiplier - 1];
+
+					if (destinationPiece != null) return false;
+				}
+				return true;
+			}
+
 			function checkLegal(pieceObject, testSource, testDestination) {
 				var piece = pieceObject.piece;
 				var color = pieceObject.color;
 
 				// cannot step onto own piece
 				var destinationPiece = board[testDestination[0] - 1][testDestination[1] - 1];
-				console.log(piece);
-				console.log(destinationPiece);
-				console.log("===================================");
 				if (destinationPiece != null &&
 					destinationPiece.color == color) return false;
 
@@ -248,23 +279,29 @@
 						return false;
 
 					case "Queen":
-						if  (xDist == yDist ||
-							(xDist == 0 && yDist != 0) || 
-							(yDist != 0 && yDist == 0)) return true;
+						if ((xDist != 0 && xDist == yDist &&
+							_checkPath(color, testSource, testDestination, "diagonal")) ||
+							(xDist == 0 && yDist != 0 && 
+							_checkPath(color, testSource, testDestination, "vertical")) || 
+							(xDist != 0 && yDist == 0 &&
+							_checkPath(color, testSource, testDestination, "horizontal"))) return true;
 						return false;
 
 					case "Bishop":
-						if (xDist == yDist) return true;
+						if (xDist != 0 && xDist == yDist &&
+							_checkPath(color, testSource, testDestination, "diagonal"))
+							return true;
 						return false;
 
 					case "Rook":
-						if ((xDist == 0 && yDist != 0) || 
-							(xDist != 0 && yDist == 0)) return true;
+						if ((xDist == 0 && yDist != 0 && 
+							_checkPath(color, testSource, testDestination, "vertical")) || 
+							(xDist != 0 && yDist == 0 &&
+							_checkPath(color, testSource, testDestination, "horizontal"))) 
+							return true;
 						return false;
 
 					case "Knight":
-						console.log("X: " + xDist);
-						console.log("Y: " + yDist);
 						if ((xDist == 2 && yDist == 1) || 
 							(xDist == 1 && yDist == 2)) return true;
 						return false;
@@ -277,7 +314,10 @@
 
 						if ((xDist == 0 && testSource[1] - testDestination[1] == targetDist) || 
 							((testSource[1] == 2 || testSource[1] == 7) &&
-							xDist == 0 && testSource[1] - testDestination[1] == 2 * targetDist)) 
+							xDist == 0 && testSource[1] - testDestination[1] == 2 * targetDist &&
+							_checkPath(color, testSource, testDestination, "vertical")) ||
+							(destinationPiece != null && 
+							xDist == 1 && testSource[1] - testDestination[1] == targetDist)) 
 							return true;
 						return false;
 				}
@@ -297,15 +337,18 @@
 						if (toMove == null) {
 							sourceSquare = intersects[0].object.square;
 							toMove = board[sourceSquare[0] - 1][sourceSquare[1] - 1];
-							if (toMove != null && toMove.color != currentPlayer)
-								toMove = null;	
+							if (toMove != null) {
+								if (toMove.color != currentPlayer) {
+									sourceSquare = null;
+									toMove = null;	
+								}
+								else toMove.materialLibraries[0] = "Yellow.mtl";
+							}
 						}
 
 						else {
 							destinationSquare = intersects[0].object.square;
-							var isLegal = checkLegal(toMove, 
-								sourceSquare, destinationSquare);
-							console.log(isLegal);
+							var isLegal = checkLegal(toMove, sourceSquare, destinationSquare);
 							if (!isLegal) {
 								toMove            = null;
 								sourceSquare      = null;
@@ -346,12 +389,14 @@
 					if (toCapture != null) {
 						toCapture.visible = false;
 					}
-					board[sourceSquare[0] - 1][sourceSquare[1] - 1]           = null;
+
+					board[sourceSquare[0] - 1][sourceSquare[1] - 1] = null;
 					board[destinationSquare[0] - 1][destinationSquare[1] - 1] = toMove;
 					
 					toMove            = null;
+					sourceSquare      = null;
 					destinationSquare = null;
-
+					
 					if (currentPlayer == "W") currentPlayer = "B";
 					else                      currentPlayer = "W";
 				}
