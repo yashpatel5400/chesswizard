@@ -10,6 +10,11 @@
     "type": "git",
     "url": "git+https://github.com/yashpatel5400/chesswizard.git"
   },
+  "dependencies": {
+    "connect": "^3.6.6",
+    "three": "^0.92.0",
+    "serve-static": "^1.13.2"
+  },
   "keywords": [
     "chess",
     "wizard",
