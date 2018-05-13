@@ -176,7 +176,7 @@
 					['Bishop',3,1,'White'],['Bishop',6,1,'White'],
 					['Bishop',3,8,'Black'],['Bishop',6,8,'Black'],
 
-					['Knight',2,1,'Black'],['Knight',7,1,'Black'],
+					['Knight',2,1,'White'],['Knight',7,1,'White'],
 					['Knight',2,8,'OffBlack'],['Knight',7,8,'OffBlack'],
 					
 					['Rook',1,1,'White'],['Rook',8,1,'White'],
@@ -227,6 +227,62 @@
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 			}
 
+			function checkLegal(pieceObject, testSource, testDestination) {
+				var piece = pieceObject.piece;
+				var color = pieceObject.color;
+
+				// cannot step onto own piece
+				var destinationPiece = board[testDestination[0] - 1][testDestination[1] - 1];
+				console.log(piece);
+				console.log(destinationPiece);
+				console.log("===================================");
+				if (destinationPiece != null &&
+					destinationPiece.color == color) return false;
+
+				var xDist = (Math.abs(testSource[0] - testDestination[0]));
+				var yDist = (Math.abs(testSource[1] - testDestination[1]));
+
+				switch(piece) {
+					case "King":
+						if ((xDist + yDist) == 1) return true;
+						return false;
+
+					case "Queen":
+						if  (xDist == yDist ||
+							(xDist == 0 && yDist != 0) || 
+							(yDist != 0 && yDist == 0)) return true;
+						return false;
+
+					case "Bishop":
+						if (xDist == yDist) return true;
+						return false;
+
+					case "Rook":
+						if ((xDist == 0 && yDist != 0) || 
+							(xDist != 0 && yDist == 0)) return true;
+						return false;
+
+					case "Knight":
+						console.log("X: " + xDist);
+						console.log("Y: " + yDist);
+						if ((xDist == 2 && yDist == 1) || 
+							(xDist == 1 && yDist == 2)) return true;
+						return false;
+
+					case "Pawn":
+						// pawns are only pieces where legality differs by color
+						var targetDist;
+						if (color == "W") targetDist = -1;
+						else              targetDist = 1;
+
+						if ((xDist == 0 && testSource[1] - testDestination[1] == targetDist) || 
+							((testSource[1] == 2 || testSource[1] == 7) &&
+							xDist == 0 && testSource[1] - testDestination[1] == 2 * targetDist)) 
+							return true;
+						return false;
+				}
+			}
+
 			function onDocumentMouseDown( e ) {
 				e.preventDefault();
 
@@ -241,13 +297,20 @@
 						if (toMove == null) {
 							sourceSquare = intersects[0].object.square;
 							toMove = board[sourceSquare[0] - 1][sourceSquare[1] - 1];
-							if (toMove != null && toMove.color == currentPlayer)
-								board[sourceSquare[0] - 1][sourceSquare[1] - 1] = null;
-							else toMove = null;	
+							if (toMove != null && toMove.color != currentPlayer)
+								toMove = null;	
 						}
 
 						else {
 							destinationSquare = intersects[0].object.square;
+							var isLegal = checkLegal(toMove, 
+								sourceSquare, destinationSquare);
+							console.log(isLegal);
+							if (!isLegal) {
+								toMove            = null;
+								sourceSquare      = null;
+								destinationSquare = null;
+							}
 						}
 					}
 				} 
@@ -264,8 +327,6 @@
 				
 				// does animation if a piece is moving
 				if (destinationSquare != null) {
-					board[destinationSquare[0] - 1][destinationSquare[1] - 1] = toMove;
-					
 					var startPos = vectorFromSquare(sourceSquare[0],sourceSquare[1]);
 					var endPos   = vectorFromSquare(destinationSquare[0],destinationSquare[1]);
 					
@@ -278,9 +339,17 @@
 					k += 1;
 				}
 
-				if (k > 100) {
+				if (k > 100) { // animation completed
 					k = 0;
-					toMove = null;
+
+					var toCapture = board[destinationSquare[0] - 1][destinationSquare[1] - 1];
+					if (toCapture != null) {
+						toCapture.visible = false;
+					}
+					board[sourceSquare[0] - 1][sourceSquare[1] - 1]           = null;
+					board[destinationSquare[0] - 1][destinationSquare[1] - 1] = toMove;
+					
+					toMove            = null;
 					destinationSquare = null;
 
 					if (currentPlayer == "W") currentPlayer = "B";
