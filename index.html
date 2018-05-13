@@ -48,8 +48,10 @@
 			init();
 			animate();
 
+			var currentPlayer = "White";
+
 			function xyzFromSquare(object, i, j) {
-				object.position.x = 75 + 150 * (i - 5);
+				object.position.x = 75 + 150 * (5 - i);
 				object.position.y = 15.0;
 				object.position.z = 75 + 150 * (j - 5);
 			}
@@ -101,6 +103,19 @@
 				scene.add( meshCanvas );
 
 				// BOARD
+				var board = [
+					["WR","WN","WB","WK","WQ","WB","WN","WR"],
+					["WP","WP","WP","WP","WP","WP","WP","WP"],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					["BP","BP","BP","BP","BP","BP","BP","BP"],
+					["BR","BN","BB","BK","BQ","BB","BN","BR"]
+				]
+
 				var callbackPainting = function() {
 					var image = texturePainting.image;
 					var geometry = new THREE.BoxGeometry( 12.5, 12.5, 30 );
@@ -118,11 +133,13 @@
 					for (var i = 1; i < 9; i++) {
 						for (var j = 1; j < 9; j++) {
 							var curMesh; 
-							if ((i + j) % 2 == 0) curMesh = lightMesh;
-							else                curMesh = darkMesh;
+							if ((i + j) % 2 == 0) curMesh = darkMesh;
+							else                  curMesh = lightMesh;
 
 							var tile = curMesh.clone();
 							xyzFromSquare(tile, i, j);
+
+							tile.square = [i,j];
 							tiles.push(tile);
 							scene.add(tile);
 						}
@@ -193,14 +210,17 @@
 
 			function onDocumentMouseDown( e ) {
 				e.preventDefault();
+
+				mouse.x = ( ( e.clientX - renderer.domElement.offsetLeft ) / renderer.domElement.clientWidth ) * 2 - 1;
+    			mouse.y = - ( ( e.clientY - renderer.domElement.offsetTop ) / renderer.domElement.clientHeight ) * 2 + 1;
 				
 				raycaster.setFromCamera( mouse, camera );
 				var intersects = raycaster.intersectObjects( tiles, true );
 				if ( intersects.length > 0 ) {
-					intersects[0].object.visible = false;
+					var selectedSquare = intersects[0].object.square;
+					console.log(selectedSquare);
 				} 
 			}
-
 			function onWindowResize() {
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
