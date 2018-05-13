@@ -48,7 +48,24 @@
 			init();
 			animate();
 
-			var currentPlayer = "White";
+			// internal representation of the board
+			var currentPlayer = "W";
+			var board = [
+				// ["WR","WN","WB","WK","WQ","WB","WN","WR"],
+				// ["WP","WP","WP","WP","WP","WP","WP","WP"],
+				[null,null,null,null,null,null,null,null],
+				[null,null,null,null,null,null,null,null],
+				[null,null,null,null,null,null,null,null],
+				[null,null,null,null,null,null,null,null],
+				[null,null,null,null,null,null,null,null],
+				[null,null,null,null,null,null,null,null],
+				[null,null,null,null,null,null,null,null],
+				[null,null,null,null,null,null,null,null]
+				// ["BP","BP","BP","BP","BP","BP","BP","BP"],
+				// ["BR","BN","BB","BK","BQ","BB","BN","BR"]
+			];
+			var toMove = null;
+			var destination = null;
 
 			function xyzFromSquare(object, i, j) {
 				object.position.x = 75 + 150 * (5 - i);
@@ -103,19 +120,6 @@
 				scene.add( meshCanvas );
 
 				// BOARD
-				var board = [
-					["WR","WN","WB","WK","WQ","WB","WN","WR"],
-					["WP","WP","WP","WP","WP","WP","WP","WP"],
-					[null,null,null,null,null,null,null,null],
-					[null,null,null,null,null,null,null,null],
-					[null,null,null,null,null,null,null,null],
-					[null,null,null,null,null,null,null,null],
-					[null,null,null,null,null,null,null,null],
-					[null,null,null,null,null,null,null,null],
-					["BP","BP","BP","BP","BP","BP","BP","BP"],
-					["BR","BN","BB","BK","BQ","BB","BN","BR"]
-				]
-
 				var callbackPainting = function() {
 					var image = texturePainting.image;
 					var geometry = new THREE.BoxGeometry( 12.5, 12.5, 30 );
@@ -189,8 +193,13 @@
 						var loader = new THREE.OBJLoader();
 						loader.setMaterials(materials);
 						loader.load(file, function(object) {
+							if (color == "OffBlack" || color == "Black")
+								object.color = "B";
+							else object.color = "W";
+
 							object.scale.multiplyScalar(7.5);
 							xyzFromSquare(object, squares[0], squares[1]);
+							board[squares[0] - 1][squares[1] - 1] = object;
 							scene.add(object);
 						});
 					});
@@ -217,8 +226,24 @@
 				raycaster.setFromCamera( mouse, camera );
 				var intersects = raycaster.intersectObjects( tiles, true );
 				if ( intersects.length > 0 ) {
-					var selectedSquare = intersects[0].object.square;
-					console.log(selectedSquare);
+					// selecting a piece to move
+					if (toMove == null) {
+						var selectedSquare = intersects[0].object.square;
+						toMove = board[selectedSquare[0] - 1][selectedSquare[1] - 1];
+						if (toMove != null && toMove.color == currentPlayer)
+							board[selectedSquare[0] - 1][selectedSquare[1] - 1] = null;
+						else toMove = null;	
+					}
+
+					else {
+						var destinationSquare = intersects[0].object.square;
+						board[destinationSquare[0] - 1][destinationSquare[1] - 1] = toMove;
+						xyzFromSquare(toMove, destinationSquare[0], destinationSquare[1]);
+						toMove = null;
+
+						if (currentPlayer == "W") currentPlayer = "B";
+						else                      currentPlayer = "W";
+					}
 				} 
 			}
 			function onWindowResize() {
