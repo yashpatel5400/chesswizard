@@ -61,7 +61,7 @@
 			var destinationSquare = null;
 			var k = 0;
 
-			var lightMaterial, darkMaterial, highlightMaterial;
+			var lightMaterial, darkMaterial, highlightMaterial, checkMaterial;
 			var legalBoard;
 
 			function vectorFromSquare(i, j) {
@@ -156,26 +156,28 @@
 				];
 
 				// lightMaterial     = new THREE.MeshPhongMaterial( { color: 0x996633 } );
-				lightMaterial     = new THREE.MeshPhongMaterial( { color: 0xC8C8C8, 
+				lightMaterial = new THREE.MeshPhongMaterial( { color: 0xC8C8C8, 
 					refractionRatio: 0.98, reflectivity: 1.0 } );
-				// lightMaterial.envMap.mapping = THREE.CubeRefractionMapping;
-
-				darkMaterial     = new THREE.MeshPhongMaterial( { color: 0x888888, 
+				
+				darkMaterial = new THREE.MeshPhongMaterial( { color: 0x888888, 
 					envMap: scene.background, refractionRatio: 0.95, reflectivity: 1.0 } );
 				darkMaterial.envMap.mapping = THREE.CubeRefractionMapping;
 
-				highlightMaterial     = new THREE.MeshPhongMaterial( { color: 0xCCFFCC, 
+				highlightMaterial = new THREE.MeshPhongMaterial( { color: 0xCCFFCC, 
 					envMap: scene.background, refractionRatio: 0.95, reflectivity: 1.0 } );
 				highlightMaterial.envMap.mapping = THREE.CubeRefractionMapping;
+
+				checkMaterial  = new THREE.MeshPhongMaterial( { color: 0xFF0000, 
+					envMap: scene.background, refractionRatio: 0.95, reflectivity: 1.0 } );
+				checkMaterial.envMap.mapping = THREE.CubeRefractionMapping;
 
 				var geometry      = new THREE.BoxGeometry( 12.5, 12.5, 30 );
 				var lightTile     = new THREE.Mesh( geometry, lightMaterial );
 				var darkTile      = new THREE.Mesh( geometry, darkMaterial );
-				var highlightTile = new THREE.Mesh( geometry, highlightMaterial );
 
 				var callbackPainting = function() {
 					var image = texturePainting.image;
-					var tiles = [lightTile, darkTile, highlightTile];
+					var tiles = [lightTile, darkTile];
 
 					for (var i = 0; i < tiles.length; i++) {
 						tiles[i].rotation.x = - Math.PI / 2;
@@ -186,8 +188,8 @@
 					for (var i = 1; i < 9; i++) {
 						for (var j = 1; j < 9; j++) {
 							var curMesh; 
-							if ((i + j) % 2 == 0) curMesh = lightTile;
-							else                  curMesh = darkTile;
+							if ((i + j) % 2 == 0) curMesh = darkTile;
+							else                  curMesh = lightTile;
 
 							var tile = curMesh.clone();
 							xyzFromSquare(tile, i, j);
@@ -266,6 +268,7 @@
 							xyzFromSquare(object, squares[0], squares[1]);
 							object.position.y += 10.0;
 							board[squares[0] - 1][squares[1] - 1] = object;
+
 							scene.add(object);
 						});
 					});
@@ -329,6 +332,41 @@
 				return true;
 			}
 
+			function getCheck() {
+				var opponentColor;
+				if (currentPlayer == "W") opponentColor = "B";
+				else                      opponentColor = "W";
+
+				var kingPosition = null;
+				for (var k = 1; k < 9; k++) {
+					for (var l = 1; l < 9; l++) {
+						var piece = board[k-1][l-1];
+						if (piece != null &&
+							piece.color == currentPlayer &&
+							piece.piece == "King") {
+							
+							kingPosition = [k,l];
+						}
+					}
+
+					if (kingPosition != null) break;
+				}
+
+				for (var i = 1; i < 9; i++) {
+					for (var j = 1; j < 9; j++) {
+						var piece = board[i-1][j-1];
+						if (piece != null && 
+							piece.color == opponentColor &&
+							checkLegal(piece, [i,j], kingPosition)) {
+							
+							return kingPosition;
+						}
+					} 
+				}
+
+				return null;
+			}
+
 			function getLegal(pieceObject, testSource) {
 				for (var i = 1; i < 9; i++) {
 					for (var j = 1; j < 9; j++) {
@@ -345,8 +383,8 @@
 							curTile.material = highlightMaterial;
 						}
 						else {
-							if ((i + j) % 2 == 0) curTile.material = lightMaterial;
-							else                  curTile.material = darkMaterial;
+							if ((i + j) % 2 == 0) curTile.material = darkMaterial;
+							else                  curTile.material = lightMaterial;
 						}
 					}
 				}
@@ -549,6 +587,11 @@
 					
 					if (currentPlayer == "W") currentPlayer = "B";
 					else                      currentPlayer = "W";
+
+					var checkSquare = getCheck();
+					if (checkSquare != null) {
+						boardTiles[checkSquare[0]-1][checkSquare[1]-1].material = checkMaterial;
+					}
 				}
 
 				render();
