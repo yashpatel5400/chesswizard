@@ -36,6 +36,9 @@
 		<script src="OrbitControls.js"></script>
 		<script src="three.proton.min.js"></script>
 
+		<script src='threex.laserbeam.js'></script>
+		<script src='threex.lasercooked.js'></script>
+
 		<script>
 			// SETUP -- don't touch
 			var THREE = require('three');
@@ -45,7 +48,7 @@
 			var camera, controls, clock, renderer, raycaster, scene;
 
 			var mouse = new THREE.Vector2(), INTERSECTED;
-			var tiles = [];
+			var boardTiles, boardTilesFlattened;
 
 			init();
 			animate();
@@ -58,10 +61,13 @@
 			var destinationSquare = null;
 			var k = 0;
 
+			var lightMaterial, darkMaterial, highlightMaterial;
+			var legalBoard;
+
 			function vectorFromSquare(i, j) {
 				return new THREE.Vector3(
 					75 + 150 * (5 - i),
-					15.0,
+					25.0,
 					75 + 150 * (j - 5));
 			}
 
@@ -71,8 +77,23 @@
 				object.position.z = 75 + 150 * (j - 5);
 			}
 
+			function resetLegal() {
+				legalBoard = [
+					[false,false,false,false,false,false,false,false],
+					[false,false,false,false,false,false,false,false],
+					[false,false,false,false,false,false,false,false],
+					[false,false,false,false,false,false,false,false],
+					[false,false,false,false,false,false,false,false],
+					[false,false,false,false,false,false,false,false],
+					[false,false,false,false,false,false,false,false],
+					[false,false,false,false,false,false,false,false]
+				]
+			}
+
 			// scene setup -- MODIFY THIS
 			function init() {
+				toRender = [];
+
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
 				
@@ -118,45 +139,58 @@
 				scene.add( meshCanvas );
 
 				// BOARD
+				boardTiles = [
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null],
+					[null,null,null,null,null,null,null,null]
+				];
+
+				lightMaterial     = new THREE.MeshPhongMaterial( { color: 0x996633 } ) ;
+				darkMaterial      = new THREE.MeshBasicMaterial( { color: 0xbc9055 } );
+				highlightMaterial = new THREE.MeshPhongMaterial( { color: 0xccffcc } ) ;
+
+				var geometry  = new THREE.BoxGeometry( 12.5, 12.5, 30 );
+				var lightTile     = new THREE.Mesh( geometry, lightMaterial );
+				var darkTile      = new THREE.Mesh( geometry, darkMaterial );
+				var highlightTile = new THREE.Mesh( geometry, highlightMaterial );
+
 				var callbackPainting = function() {
 					var image = texturePainting.image;
-					var geometry = new THREE.BoxGeometry( 12.5, 12.5, 30 );
-					var lightMesh = new THREE.Mesh( geometry, lightTile );
-					var darkMesh  = new THREE.Mesh( geometry, darkTile );
+					var tiles = [lightTile, darkTile, highlightTile];
 
-					lightMesh.rotation.x = - Math.PI / 2;
-					lightMesh.scale.x    = image.width / 100;
-					lightMesh.scale.y    = image.height / 100;
-
-					darkMesh.rotation.x  = - Math.PI / 2;
-					darkMesh.scale.x     = image.width / 100;
-					darkMesh.scale.y     = image.height / 100;
+					for (var i = 0; i < tiles.length; i++) {
+						tiles[i].rotation.x = - Math.PI / 2;
+						tiles[i].scale.x    = image.width / 100;
+						tiles[i].scale.y    = image.height / 100;
+					}
 
 					for (var i = 1; i < 9; i++) {
 						for (var j = 1; j < 9; j++) {
 							var curMesh; 
-							if ((i + j) % 2 == 0) curMesh = lightMesh;
-							else                  curMesh = darkMesh;
+							if ((i + j) % 2 == 0) curMesh = lightTile;
+							else                  curMesh = darkTile;
 
 							var tile = curMesh.clone();
 							xyzFromSquare(tile, i, j);
 
 							tile.square = [i,j];
-							tiles.push(tile);
+							boardTiles[i-1][j-1] = tile;
 							scene.add(tile);
+
+							test = tile;
 						}
 					}
+
+					boardTilesFlattened = [].concat.apply([], boardTiles);
 				};
 
 				var texturePainting = new THREE.TextureLoader().load( "textures/chess.jpg", callbackPainting );
-				var lightTile = new THREE.MeshPhongMaterial( { 
-    color: 0x996633, 
-    specular: 0x050505,
-    shininess: 100
-} ) ;
-				// new THREE.MeshBasicMaterial( { color: 0xe8d8c3 } );
-				var darkTile  = new THREE.MeshBasicMaterial( { color: 0xbc9055 } );
-
+				
 				// CHESS PIECES -- MODIFY positions
 				board = [
 					[null,null,null,null,null,null,null,null],
@@ -169,6 +203,8 @@
 					[null,null,null,null,null,null,null,null]
 				];
 
+				resetLegal();
+
 				var index = 0;
 				// had to do this format rather than hashtable due to asynch loading issues
 				var files = [
@@ -178,7 +214,7 @@
 					['Queen',5,1,'White'],
 					['Queen',5,8,'Black'],
 
-					['Glass',3,1,'Glass'],['Glass',6,1,'Glass'],
+					['Bishop',3,1,'White'],['Bishop',6,1,'White'],
 					['Bishop',3,8,'Black'],['Bishop',6,8,'Black'],
 
 					['Knight',2,1,'OffWhite'],['Knight',7,1,'OffWhite'],
@@ -214,6 +250,7 @@
 
 							object.scale.multiplyScalar(7.5);
 							xyzFromSquare(object, squares[0], squares[1]);
+							object.position.y += 10.0;
 							board[squares[0] - 1][squares[1] - 1] = object;
 							scene.add(object);
 						});
@@ -225,14 +262,11 @@
 
 				loadNextFile();
 
-				// var ambientLight = new THREE.AmbientLight( 0x404040 , 2.0 );
-				// scene.add( ambientLight );
-
 				var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.75 );
 				scene.add( directionalLight );
 
 				clock = new THREE.Clock();
-				
+
 				window.addEventListener( 'resize', onWindowResize, false );
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 			}
@@ -271,6 +305,29 @@
 					if (destinationPiece != null) return false;
 				}
 				return true;
+			}
+
+			function getLegal(pieceObject, testSource) {
+				for (var i = 1; i < 9; i++) {
+					for (var j = 1; j < 9; j++) {
+						legalBoard[i-1][j-1] = checkLegal(pieceObject, testSource, [i,j]);
+					}
+				}
+			}
+
+			function highlightLegal() {
+				for (var i = 1; i < 9; i++) {
+					for (var j = 1; j < 9; j++) {
+						curTile = boardTiles[i-1][j-1];
+						if (legalBoard[i-1][j-1]) {
+							curTile.material = highlightMaterial;
+						}
+						else {
+							if ((i + j) % 2 == 0) curTile.material = lightMaterial;
+							else                  curTile.material = darkMaterial;
+						}
+					}
+				}
 			}
 
 			function checkLegal(pieceObject, testSource, testDestination) {
@@ -343,7 +400,7 @@
     			mouse.y = - ( ( e.clientY - renderer.domElement.offsetTop ) / renderer.domElement.clientHeight ) * 2 + 1;
 				
 				raycaster.setFromCamera( mouse, camera );
-				var intersects = raycaster.intersectObjects( tiles, true );
+				var intersects = raycaster.intersectObjects( boardTilesFlattened, true );
 				if ( intersects.length > 0 ) {
 					// selecting a piece to move; checks k to make sure no animation ongoing
 					if (k == 0) {
@@ -355,17 +412,23 @@
 									sourceSquare = null;
 									toMove = null;	
 								}
+								else {
+									getLegal(toMove, sourceSquare);
+									highlightLegal();
+								}
 							}
 						}
 
 						else {
 							destinationSquare = intersects[0].object.square;
-							var isLegal = checkLegal(toMove, sourceSquare, destinationSquare);
+							var isLegal = legalBoard[destinationSquare[0]-1][destinationSquare[1]-1];
 							if (!isLegal) {
 								toMove            = null;
 								sourceSquare      = null;
 								destinationSquare = null;
 							}
+							resetLegal();
+							highlightLegal();
 						}
 					}
 				} 
@@ -438,7 +501,7 @@
 					var newPos = startPos.clone().multiplyScalar(1 - alpha).add(
 						endPos.clone().multiplyScalar(alpha));
 					toMove.position.x = newPos.x;
-					toMove.position.y = 15.0 + 45.0 * Math.abs(Math.sin(
+					toMove.position.y = 25.0 + 45.0 * Math.abs(Math.sin(
 						k * (Math.PI / period)));
 					
 					toMove.position.z = newPos.z;
@@ -468,6 +531,7 @@
 
 				render();
 			}
+
 			function render() {
 				if (proton != null) {
 					proton.update(clock.getDelta());
