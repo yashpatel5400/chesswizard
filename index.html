@@ -119,6 +119,10 @@
 				scene.background = new THREE.Color( 0x000000 );
 				scene.fog = new THREE.Fog( 0x000000, 1500, 4000 );
 
+				scene.background = new THREE.CubeTextureLoader()
+					.setPath( 'box/' )
+					.load( [ 'px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg' ] );
+
 				// GROUND
 				var imageCanvas = document.createElement( "canvas" ),
 				context = imageCanvas.getContext( "2d" );
@@ -131,11 +135,12 @@
 
 				var textureCanvas  = new THREE.TextureLoader().load("textures/table.jpg");
 				var	materialCanvas = new THREE.MeshBasicMaterial( { map: textureCanvas } );
-				var geometry       = new THREE.PlaneBufferGeometry( 100, 100 );
+				var geometry       = new THREE.BoxGeometry( 100.0, 100.0, 5.0 );
 				
 				var meshCanvas = new THREE.Mesh( geometry, materialCanvas );
 				meshCanvas.rotation.x = - Math.PI / 2;
-				meshCanvas.scale.set( 50, 50, 10 );
+				meshCanvas.position.y -= 25.0;
+				meshCanvas.scale.set( 25, 25, 10 );
 				scene.add( meshCanvas );
 
 				// BOARD
@@ -150,11 +155,20 @@
 					[null,null,null,null,null,null,null,null]
 				];
 
-				lightMaterial     = new THREE.MeshPhongMaterial( { color: 0x996633 } ) ;
-				darkMaterial      = new THREE.MeshBasicMaterial( { color: 0xbc9055 } );
-				highlightMaterial = new THREE.MeshPhongMaterial( { color: 0xccffcc } ) ;
+				// lightMaterial     = new THREE.MeshPhongMaterial( { color: 0x996633 } );
+				lightMaterial     = new THREE.MeshPhongMaterial( { color: 0xccddff, 
+					envMap: scene.background, refractionRatio: 0.98, reflectivity: 1.0 } );
+				lightMaterial.envMap.mapping = THREE.CubeRefractionMapping;
 
-				var geometry  = new THREE.BoxGeometry( 12.5, 12.5, 30 );
+				darkMaterial     = new THREE.MeshPhongMaterial( { color: 0xbc9055, 
+					envMap: scene.background, refractionRatio: 0.95, reflectivity: 1.0 } );
+				darkMaterial.envMap.mapping = THREE.CubeRefractionMapping;
+
+				highlightMaterial     = new THREE.MeshPhongMaterial( { color: 0xCCFFCC, 
+					envMap: scene.background, refractionRatio: 0.95, reflectivity: 1.0 } );
+				highlightMaterial.envMap.mapping = THREE.CubeRefractionMapping;
+
+				var geometry      = new THREE.BoxGeometry( 12.5, 12.5, 30 );
 				var lightTile     = new THREE.Mesh( geometry, lightMaterial );
 				var darkTile      = new THREE.Mesh( geometry, darkMaterial );
 				var highlightTile = new THREE.Mesh( geometry, highlightMaterial );
@@ -262,7 +276,7 @@
 
 				loadNextFile();
 
-				var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.75 );
+				var directionalLight = new THREE.DirectionalLight( 0xffffff, 1.0 );
 				scene.add( directionalLight );
 
 				clock = new THREE.Clock();
