@@ -63,6 +63,7 @@
 
 			var lightMaterial, darkMaterial, highlightMaterial, checkMaterial;
 			var legalBoard;
+			var inCheck;
 
 			function vectorFromSquare(i, j) {
 				return new THREE.Vector3(
@@ -219,6 +220,7 @@
 					[null,null,null,null,null,null,null,null]
 				];
 
+				inCheck = false;
 				resetLegal();
 
 				var index = 0;
@@ -296,6 +298,41 @@
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 			}
 
+			function getCheck() {
+				var opponentColor;
+				if (currentPlayer == "W") opponentColor = "B";
+				else                      opponentColor = "W";
+
+				var kingPosition = null;
+				for (var k = 1; k < 9; k++) {
+					for (var l = 1; l < 9; l++) {
+						var piece = board[k-1][l-1];
+						if (piece != null &&
+							piece.color == currentPlayer &&
+							piece.piece == "King") {
+							
+							kingPosition = [k,l];
+						}
+					}
+
+					if (kingPosition != null) break;
+				}
+
+				for (var i = 1; i < 9; i++) {
+					for (var j = 1; j < 9; j++) {
+						var piece = board[i-1][j-1];
+						if (piece != null && 
+							piece.color == opponentColor &&
+							checkLegal(piece, [i,j], kingPosition)) {
+							
+							return kingPosition;
+						}
+					} 
+				}
+
+				return null;
+			}
+
 			function _checkPath(color, testSource, testDestination, type) {
 				var dist, start, end;
 				var xMultiplier, yMultiplier;
@@ -332,45 +369,26 @@
 				return true;
 			}
 
-			function getCheck() {
-				var opponentColor;
-				if (currentPlayer == "W") opponentColor = "B";
-				else                      opponentColor = "W";
-
-				var kingPosition = null;
-				for (var k = 1; k < 9; k++) {
-					for (var l = 1; l < 9; l++) {
-						var piece = board[k-1][l-1];
-						if (piece != null &&
-							piece.color == currentPlayer &&
-							piece.piece == "King") {
-							
-							kingPosition = [k,l];
-						}
-					}
-
-					if (kingPosition != null) break;
-				}
-
-				for (var i = 1; i < 9; i++) {
-					for (var j = 1; j < 9; j++) {
-						var piece = board[i-1][j-1];
-						if (piece != null && 
-							piece.color == opponentColor &&
-							checkLegal(piece, [i,j], kingPosition)) {
-							
-							return kingPosition;
-						}
-					} 
-				}
-
-				return null;
-			}
-
 			function getLegal(pieceObject, testSource) {
+				var tmpPiece;
+				var piece = board[testSource[0]-1][testSource[1]-1];
 				for (var i = 1; i < 9; i++) {
 					for (var j = 1; j < 9; j++) {
-						legalBoard[i-1][j-1] = checkLegal(pieceObject, testSource, [i,j]);
+						var isLegalMotion = checkLegal(pieceObject, testSource, [i,j]);
+						if (isLegalMotion) {
+							// consider potential board if move happened
+							board[testSource[0]-1][testSource[1]-1] = null;
+							tmpPiece = board[i-1][j-1];
+							board[i-1][j-1] = piece;
+							checkSquare = getCheck();
+							
+							if (checkSquare == null) legalBoard[i-1][j-1] = true;
+							else                     legalBoard[i-1][j-1] = false;
+
+							board[i-1][j-1] = tmpPiece;
+							board[testSource[0]-1][testSource[1]-1] = piece;
+						}
+						else legalBoard[i-1][j-1] = false;
 					}
 				}
 			}
@@ -379,6 +397,8 @@
 				for (var i = 1; i < 9; i++) {
 					for (var j = 1; j < 9; j++) {
 						curTile = boardTiles[i-1][j-1];
+						if (inCheck && curTile.material == checkMaterial) continue;
+
 						if (legalBoard[i-1][j-1]) {
 							curTile.material = highlightMaterial;
 						}
@@ -487,6 +507,8 @@
 								sourceSquare      = null;
 								destinationSquare = null;
 							}
+							else inCheck = false;
+
 							resetLegal();
 							highlightLegal();
 						}
@@ -590,7 +612,11 @@
 
 					var checkSquare = getCheck();
 					if (checkSquare != null) {
+						inCheck = true;
 						boardTiles[checkSquare[0]-1][checkSquare[1]-1].material = checkMaterial;
+					}
+					else {
+						inCheck = false;
 					}
 				}
 
