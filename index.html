@@ -467,6 +467,8 @@
 						if  (xDist <= 1 && yDist <= 1 &&
 							(xDist != 0 || yDist != 0)) return true;
 
+						if (xDist == 2 && yDist == 0 && color == "B") console.log(testDestination);
+
 						if (xDist == 2 && yDist == 0 && 
 							((testDestination[0] == 2 && checkCastle(color, 2)) || 
 							 (testDestination[0] == 6 && checkCastle(color, 6)))) return true;
@@ -588,6 +590,9 @@
 											toCastle[0]     = 8;
 											toCastleDest[0] = 5;
 										}
+
+										console.log(destinationSquare);
+										console.log(toCastleDest);
 									}
 								}
 
@@ -688,6 +693,7 @@
 
 				if (toCastle != null) {
 					var castleRook = board[toCastle[0]-1][toCastle[1]-1];
+					console.log(toCastleDest);
 					var startPos = vectorFromSquare(toCastle[0],toCastle[1]);
 					var endPos   = vectorFromSquare(toCastleDest[0],toCastleDest[1]);
 					
@@ -695,7 +701,7 @@
 					var newPos = startPos.clone().multiplyScalar(1 - alpha).add(
 						endPos.clone().multiplyScalar(alpha));
 					castleRook.position.x = newPos.x;
-					castleRook.position.y = 25.0 + 100.0 * Math.abs(Math.sin(
+					castleRook.position.y = 25.0 + 250.0 * Math.abs(Math.sin(
 						l * (Math.PI / 100.0)));
 					castleRook.position.z = newPos.z;
 
@@ -704,6 +710,7 @@
 
 				if (k > 100) { // animation completed
 
+					l = 0;
 					k = 0;
 
 					var toCapture = board[destinationSquare[0] - 1][destinationSquare[1] - 1];
@@ -724,6 +731,7 @@
 					sourceSquare      = null;
 					destinationSquare = null;
 					toCastle          = null;
+					toCastleDest      = null;
 					
 					if (currentPlayer == "W") currentPlayer = "B";
 					else                      currentPlayer = "W";
