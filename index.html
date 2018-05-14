@@ -149,7 +149,12 @@
 				};
 
 				var texturePainting = new THREE.TextureLoader().load( "textures/chess.jpg", callbackPainting );
-				var lightTile = new THREE.MeshBasicMaterial( { color: 0xe8d8c3 } );
+				var lightTile = new THREE.MeshPhongMaterial( { 
+    color: 0x996633, 
+    specular: 0x050505,
+    shininess: 100
+} ) ;
+				// new THREE.MeshBasicMaterial( { color: 0xe8d8c3 } );
 				var darkTile  = new THREE.MeshBasicMaterial( { color: 0xbc9055 } );
 
 				// CHESS PIECES -- MODIFY positions
@@ -173,16 +178,16 @@
 					['Queen',5,1,'White'],
 					['Queen',5,8,'Black'],
 
-					['Bishop',3,1,'White'],['Bishop',6,1,'White'],
+					['Glass',3,1,'Glass'],['Glass',6,1,'Glass'],
 					['Bishop',3,8,'Black'],['Bishop',6,8,'Black'],
 
-					['Knight',2,1,'White'],['Knight',7,1,'White'],
+					['Knight',2,1,'OffWhite'],['Knight',7,1,'OffWhite'],
 					['Knight',2,8,'OffBlack'],['Knight',7,8,'OffBlack'],
 					
-					['Rook',1,1,'White'],['Rook',8,1,'White'],
+					['Rook',1,1,'OffWhite'],['Rook',8,1,'OffWhite'],
 					['Rook',1,8,'OffBlack'],['Rook',8,8,'OffBlack'],
 					
-					['Pawn',1,2,'White'],['Pawn',2,2,'White'],['Pawn',3,2,'White'],['Pawn',4,2,'White'],['Pawn',5,2,'White'],['Pawn',6,2,'White'],['Pawn',7,2,'White'],['Pawn',8,2,'White'],
+					['Pawn',1,2,'OffWhite'],['Pawn',2,2,'OffWhite'],['Pawn',3,2,'OffWhite'],['Pawn',4,2,'OffWhite'],['Pawn',5,2,'OffWhite'],['Pawn',6,2,'OffWhite'],['Pawn',7,2,'OffWhite'],['Pawn',8,2,'OffWhite'],
 					['Pawn',1,7,'OffBlack'],['Pawn',2,7,'OffBlack'],['Pawn',3,7,'OffBlack'],['Pawn',4,7,'OffBlack'],['Pawn',5,7,'OffBlack'],['Pawn',6,7,'OffBlack'],['Pawn',7,7,'OffBlack'],['Pawn',8,7,'OffBlack']
 				];
 
@@ -220,8 +225,11 @@
 
 				loadNextFile();
 
-				var ambientLight = new THREE.AmbientLight( 0xcccccc, 0.75 );
-				scene.add( ambientLight );
+				// var ambientLight = new THREE.AmbientLight( 0x404040 , 2.0 );
+				// scene.add( ambientLight );
+
+				var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.75 );
+				scene.add( directionalLight );
 
 				clock = new THREE.Clock();
 				
@@ -464,7 +472,7 @@
 				if (proton != null) {
 					proton.update(clock.getDelta());
 				}
-				if (emitter != null && clock.getElapsedTime() > .75) {
+				if (emitter != null && clock.getElapsedTime() > .50) {
 					emitter.removeAllParticles();
 					emitter.destroy();
 					clock.stop();
