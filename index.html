@@ -34,13 +34,15 @@
 		<script src="OBJLoader.js"></script>
 		<script src="MTLLoader.js"></script>
 		<script src="OrbitControls.js"></script>
+		<script src="three.proton.min.js"></script>
 
 		<script>
 			// SETUP -- don't touch
 			var THREE = require('three');
 
 			var container;
-			var camera, controls, scene, renderer, raycaster;
+			var proton, emitter, protonRenderer;
+			var camera, controls, clock, renderer, raycaster, scene;
 
 			var mouse = new THREE.Vector2(), INTERSECTED;
 			var tiles = [];
@@ -221,6 +223,8 @@
 				var ambientLight = new THREE.AmbientLight( 0xcccccc, 0.75 );
 				scene.add( ambientLight );
 
+				clock = new THREE.Clock();
+				
 				window.addEventListener( 'resize', onWindowResize, false );
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 			}
@@ -275,7 +279,8 @@
 
 				switch(piece) {
 					case "King":
-						if ((xDist + yDist) == 1) return true;
+						if (xDist <= 1 && yDist <= 1 &&
+							(xDist != 0 || yDist != 0)) return true;
 						return false;
 
 					case "Queen":
@@ -357,11 +362,57 @@
 					}
 				} 
 			}
+
+			function addProton(square) {
+				proton  = new Proton();
+				emitter = createEmitter(square);
+				
+				clock.start();
+
+				proton.addEmitter(emitter);
+				proton.addRender(new Proton.SpriteRender(scene));
+			}
+
+			function createSprite() {
+				var map = new THREE.TextureLoader().load("./img/dot.png");
+				var material = new THREE.SpriteMaterial({
+					map: map,
+					color: 0xff0000,
+					blending: THREE.AdditiveBlending,
+					fog: true
+				});
+				return new THREE.Sprite(material);
+			}
+
+			function createEmitter(square) {
+				emitter = new Proton.Emitter();
+				emitter.rate = new Proton.Rate(new Proton.Span(10, 15), new Proton.Span(.05, .1));
+				emitter.addInitialize(new Proton.Body(createSprite()));
+				emitter.addInitialize(new Proton.Mass(1));
+				emitter.addInitialize(new Proton.Life(1, 3));
+				emitter.addInitialize(new Proton.Position(new Proton.SphereZone(20)));
+				emitter.addInitialize(new Proton.V(new Proton.Span(500, 800), new Proton.Vector3D(0, 1, 0), 30));
+				emitter.addBehaviour(new Proton.RandomDrift(10, 10, 10, .05));
+				emitter.addBehaviour(new Proton.Scale(new Proton.Span(2, 3.5), 0));
+				emitter.addBehaviour(new Proton.G(6));
+				emitter.addBehaviour(new Proton.Color('#FF0026', ['#ffff00', '#ffff11'], Infinity, Proton.easeOutSine));
+				
+				var emitterPosition = vectorFromSquare(square[0],square[1]);
+
+				emitter.p.x = emitterPosition.x;
+				emitter.p.y = emitterPosition.y;
+				emitter.p.z = emitterPosition.z;
+				
+				emitter.emit();
+				return emitter;
+			}
+
 			function onWindowResize() {
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
 				renderer.setSize( window.innerWidth, window.innerHeight );
 			}
+
 			function animate() {
 				requestAnimationFrame( animate );
 
@@ -384,15 +435,15 @@
 					
 					toMove.position.z = newPos.z;
 					k += 1;
-					// 1 -> 100;
-					// 4 -> 25;
 				}
 
 				if (k > 100) { // animation completed
+
 					k = 0;
 
 					var toCapture = board[destinationSquare[0] - 1][destinationSquare[1] - 1];
 					if (toCapture != null) {
+						addProton(destinationSquare);
 						toCapture.visible = false;
 					}
 
@@ -410,6 +461,15 @@
 				render();
 			}
 			function render() {
+				if (proton != null) {
+					proton.update(clock.getDelta());
+				}
+				if (emitter != null && clock.getElapsedTime() > .75) {
+					emitter.removeAllParticles();
+					emitter.destroy();
+					clock.stop();
+				}
+
 				renderer.render( scene, camera );
 			}
 		</script>
