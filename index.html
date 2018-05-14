@@ -156,11 +156,11 @@
 				];
 
 				// lightMaterial     = new THREE.MeshPhongMaterial( { color: 0x996633 } );
-				lightMaterial     = new THREE.MeshPhongMaterial( { color: 0xccddff, 
-					envMap: scene.background, refractionRatio: 0.98, reflectivity: 1.0 } );
-				lightMaterial.envMap.mapping = THREE.CubeRefractionMapping;
+				lightMaterial     = new THREE.MeshPhongMaterial( { color: 0xC8C8C8, 
+					refractionRatio: 0.98, reflectivity: 1.0 } );
+				// lightMaterial.envMap.mapping = THREE.CubeRefractionMapping;
 
-				darkMaterial     = new THREE.MeshPhongMaterial( { color: 0xbc9055, 
+				darkMaterial     = new THREE.MeshPhongMaterial( { color: 0x888888, 
 					envMap: scene.background, refractionRatio: 0.95, reflectivity: 1.0 } );
 				darkMaterial.envMap.mapping = THREE.CubeRefractionMapping;
 
@@ -276,8 +276,16 @@
 
 				loadNextFile();
 
-				var directionalLight = new THREE.DirectionalLight( 0xffffff, 1.0 );
-				scene.add( directionalLight );
+				var ambient = new THREE.AmbientLight( 0xffffff );
+				scene.add( ambient );
+				pointLight = new THREE.PointLight( 0xffffff, .75 );
+				scene.add( pointLight );
+
+				// light representation
+				var sphere = new THREE.SphereBufferGeometry( 100, 16, 8 );
+				var mesh = new THREE.Mesh( sphere, new THREE.MeshBasicMaterial( { color: 0xffffff } ) );
+				mesh.scale.set( 0.05, 0.05, 0.05 );
+				pointLight.add( mesh );
 
 				clock = new THREE.Clock();
 
