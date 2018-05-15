@@ -170,20 +170,10 @@
 					[null,null,null,null,null,null,null,null]
 				];
 
-				lightMaterial = new THREE.MeshPhongMaterial( { color: 0xC8C8C8, 
-					refractionRatio: 0.98, reflectivity: 1.0 } );
-				
-				darkMaterial = new THREE.MeshPhongMaterial( { color: 0x888888, 
-					envMap: scene.background, refractionRatio: 0.95, reflectivity: 1.0 } );
-				darkMaterial.envMap.mapping = THREE.CubeRefractionMapping;
-
-				highlightMaterial = new THREE.MeshPhongMaterial( { color: 0x80ff80, 
-					envMap: scene.background, refractionRatio: 0.95, reflectivity: 1.0 } );
-				highlightMaterial.envMap.mapping = THREE.CubeRefractionMapping;
-
-				checkMaterial  = new THREE.MeshPhongMaterial( { color: 0xff748c, 
-					envMap: scene.background, refractionRatio: 0.95, reflectivity: 1.0 } );
-				checkMaterial.envMap.mapping = THREE.CubeRefractionMapping;
+				lightMaterial = new THREE.MeshLambertMaterial( { color: 0xF5DEB3, ambient: 0x993300, envMap: scene.background, combine: THREE.MixOperation, reflectivity: 0.3 } );
+				darkMaterial = new THREE.MeshLambertMaterial( { color: 0x8B4513, ambient: 0x993300, envMap: scene.background, combine: THREE.MixOperation, reflectivity: 0.3 } );
+				highlightMaterial = new THREE.MeshLambertMaterial( { color: 0x80ff80, ambient: 0x993300, envMap: scene.background, combine: THREE.MixOperation, reflectivity: 0.3 } );
+				checkMaterial  = new THREE.MeshLambertMaterial( { color: 0xff748c, ambient: 0x993300, envMap: scene.background, combine: THREE.MixOperation, reflectivity: 0.3 } );
 
 				var geometry      = new THREE.BoxGeometry( 12.5, 12.5, 30 );
 				var lightTile     = new THREE.Mesh( geometry, lightMaterial );
@@ -329,9 +319,7 @@
 						bevelSegments: 5
 					} );
 
-					var textMaterial = new THREE.MeshPhongMaterial( 
-				        { color: 0xff0000, specular: 0xffffff }
-				    );
+					var textMaterial = new THREE.MeshLambertMaterial( { color: 0x00ff00, ambient: 0x993300, envMap: scene.background, combine: THREE.MixOperation, reflectivity: 0.3 } );
 
 				    checkmateText = new THREE.Mesh(textGeometry, textMaterial);
 				    checkmateText.position.x = -750.0;
@@ -418,9 +406,28 @@
 				return true;
 			}
 
-			function getLegal(pieceObject, testSource) {
+			function checkCheckmate() {
+				if (!inCheck) return false;
+				for (var i = 1; i < 9; i++) {
+					for (var j = 1; j < 9; j++) {
+						var curPiece = board[i-1][j-1];
+						if (curPiece != null &&
+							curPiece.color == currentPlayer) {
+
+							var count = getLegal(curPiece, [i,j], true);
+							if (count > 0) return false;
+						}
+					}
+				}
+
+				return true;
+			}
+
+			function getLegal(pieceObject, testSource, returnCount) {
 				var tmpPiece;
 				var piece = board[testSource[0]-1][testSource[1]-1];
+				var count = 0;
+
 				for (var i = 1; i < 9; i++) {
 					for (var j = 1; j < 9; j++) {
 						var isLegalMotion = checkLegal(pieceObject, testSource, [i,j]);
@@ -431,15 +438,22 @@
 							board[i-1][j-1] = piece;
 							checkSquare = getCheck();
 							
-							if (checkSquare == null) legalBoard[i-1][j-1] = true;
-							else                     legalBoard[i-1][j-1] = false;
-
+							if (returnCount) {
+								if (checkSquare == null) count++;
+							}
+							else {
+								if (checkSquare == null) legalBoard[i-1][j-1] = true;
+								else                     legalBoard[i-1][j-1] = false;
+							}
+							
 							board[i-1][j-1] = tmpPiece;
 							board[testSource[0]-1][testSource[1]-1] = piece;
 						}
-						else legalBoard[i-1][j-1] = false;
+						else if (!returnCount) legalBoard[i-1][j-1] = false;
 					}
 				}
+
+				if (returnCount) return count;
 			}
 
 			function highlightLegal() {
@@ -569,7 +583,7 @@
 				
 				raycaster.setFromCamera( mouse, camera );
 				var intersects = raycaster.intersectObjects( boardTilesFlattened, true );
-				if ( intersects.length > 0 ) {
+				if ( !checkmate && intersects.length > 0 ) {
 					// selecting a piece to move; checks k to make sure no animation ongoing
 					if (k == 0) {
 						if (toMove == null) {
@@ -581,7 +595,7 @@
 									toMove = null;	
 								}
 								else {
-									getLegal(toMove, sourceSquare);
+									getLegal(toMove, sourceSquare, false);
 									highlightLegal();
 
 									isSelected = true;
@@ -796,6 +810,8 @@
 					else {
 						inCheck = false;
 					}
+
+					checkmate = checkCheckmate();
 				}
 
 				render();
@@ -817,7 +833,7 @@
 			        }
 
 			        for (var i = 0; i < fireworks.length; i++) {
-			            if (fireworks[i].done) // cleanup {
+			            if (fireworks[i].done) {
 			                fireworks.splice(i, 1); 
 			                continue; 
 			            }
