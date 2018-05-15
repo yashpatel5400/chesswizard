@@ -831,6 +831,10 @@
 			function animate() {
 				requestAnimationFrame( animate );
 
+				for (var i = 0; i < promotionPieces.length; i++) {
+					promotionPieces[i].rotation.y -= .025;
+				}
+
 				controls.update(); 
 				
 				// does animation if a piece is moving
