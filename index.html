@@ -36,8 +36,8 @@
 		<script src="OrbitControls.js"></script>
 		<script src="three.proton.min.js"></script>
 
-		<script src='threex.laserbeam.js'></script>
-		<script src='threex.lasercooked.js'></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+		<script src='fireworks.js'></script>
 
 		<script>
 			// SETUP -- don't touch
@@ -48,8 +48,7 @@
 			var camera, controls, clock, renderer, raycaster, scene;
 
 			var canvas, context;
-			var fireworksProton, fireworksRenderer, fireworksEmitter;
-
+			
 			var mouse = new THREE.Vector2(), INTERSECTED;
 			var boardTiles, boardTilesFlattened;
 
@@ -68,12 +67,14 @@
 			var lightMaterial, darkMaterial, highlightMaterial, checkMaterial;
 			var legalBoard;
 			var inCheck;
+			var fireworks;
 
 			var whiteCanFirstCastle, whiteCanLastCastle, 
 				blackCanFirstCastle, blackCanLastCastle;
 			var toCastle, toCastleDest;
 
 			var isSelected;
+			var checkmateText, checkmate;
 
 			function vectorFromSquare(i, j) {
 				return new THREE.Vector3(
@@ -104,6 +105,7 @@
 			// scene setup -- MODIFY THIS
 			function init() {
 				toRender = [];
+				fireworks = [];
 
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
@@ -331,13 +333,15 @@
 				        { color: 0xff0000, specular: 0xffffff }
 				    );
 
-				    var mesh = new THREE.Mesh(textGeometry, textMaterial);
-				    mesh.position.x = -750.0;
-				    mesh.position.y = 250.0;
-				    mesh.visible    = false;
-				    
-				    scene.add(mesh);
+				    checkmateText = new THREE.Mesh(textGeometry, textMaterial);
+				    checkmateText.position.x = -750.0;
+				    checkmateText.position.y = 250.0;
+				    checkmateText.visible    = false;
+
+				    scene.add(checkmateText);
 				} );
+
+				checkmate = false;
 
 				window.addEventListener( 'resize', onWindowResize, false );
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
@@ -691,7 +695,7 @@
 				
 				if (isSelected) {
 					emitter.addInitialize(new Proton.Position(new Proton.SphereZone(10)));
-					emitter.addBehaviour(new Proton.Scale(new Proton.Span(1, 2), 0));
+					emitter.addBehaviour(new Proton.Scale(new Proton.Span(1.25, 2.5), 0));
 					emitter.addBehaviour(new Proton.Color('#00FF00', ['#00ff11', '#0000ff'], Infinity, Proton.easeOutSine));
 				}
 				else {
@@ -749,7 +753,7 @@
 					var newPos = startPos.clone().multiplyScalar(1 - alpha).add(
 						endPos.clone().multiplyScalar(alpha));
 					castleRook.position.x = newPos.x;
-					castleRook.position.y = 25.0 + 250.0 * Math.abs(Math.sin(
+					castleRook.position.y = 25.0 + 350.0 * Math.abs(Math.sin(
 						l * (Math.PI / 100.0)));
 					castleRook.position.z = newPos.z;
 
@@ -807,9 +811,22 @@
 					clock.stop();
 				}
 
-				if (fireworksProton != null) {
-					fireworksProton.update();
+				if (checkmate) {
+					if (THREE.Math.randInt( 1, 20 ) === 10) {
+			            fireworks.push(new Firework(scene)); 
+			        }
+
+			        for (var i = 0; i < fireworks.length; i++) {
+			            if (fireworks[i].done) // cleanup {
+			                fireworks.splice(i, 1); 
+			                continue; 
+			            }
+			            fireworks[i].update();
+			        }
+
+			        checkmateText.visible = true;
 				}
+
 				renderer.render( scene, camera );
 			}
 		</script>
