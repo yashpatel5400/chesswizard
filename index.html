@@ -76,6 +76,12 @@
 			var isSelected;
 			var checkmateText, checkmate;
 
+			var pieceObjects;
+			var toPromote;
+			var promotionSquare;
+
+			var promotionOptions = ["Queen","Rook","Knight","Bishop"];
+
 			function vectorFromSquare(i, j) {
 				return new THREE.Vector3(
 					75 + 150 * (5 - i),
@@ -87,6 +93,12 @@
 				object.position.x = 75 + 150 * (5 - i);
 				object.position.y = 15.0;
 				object.position.z = 75 + 150 * (j - 5);
+			}
+
+			function squareFromXZ(position) {
+				i = Math.round(5 - (position.x - 75.0) / 150.0);
+				j = Math.round(5 + (position.z - 75.0) / 150.0);
+				return [i, j];
 			}
 
 			function resetLegal() {
@@ -256,7 +268,10 @@
 					['Pawn',1,7,'OffBlack'],['Pawn',2,7,'OffBlack'],['Pawn',3,7,'OffBlack'],['Pawn',4,7,'OffBlack'],['Pawn',5,7,'OffBlack'],['Pawn',6,7,'OffBlack'],['Pawn',7,7,'OffBlack'],['Pawn',8,7,'OffBlack']
 				];
 
+				pieceObjects = {};
+
 				var mtlLoader = new THREE.MTLLoader();
+				
 				function loadNextFile() {
 					if (index > files.length - 1) return;
 
@@ -281,6 +296,12 @@
 							xyzFromSquare(object, squares[0], squares[1]);
 							object.position.y += 10.0;
 							board[squares[0] - 1][squares[1] - 1] = object;
+
+							var pieceType = `${object.color}${object.piece}`;
+							if (!(pieceType in pieceObjects)) {
+								var promotionRep = object.clone();
+								pieceObjects[pieceType] = promotionRep;
+							}
 
 							scene.add(object);
 						});
@@ -330,6 +351,9 @@
 				} );
 
 				checkmate = false;
+
+				toPromote = false;
+				promotionPieces = [];
 
 				window.addEventListener( 'resize', onWindowResize, false );
 				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
@@ -576,104 +600,174 @@
 			}
 
 			function onDocumentMouseDown( e ) {
+				var EPS = 10e-5;
+
 				e.preventDefault();
 
 				mouse.x = ( ( e.clientX - renderer.domElement.offsetLeft ) / renderer.domElement.clientWidth ) * 2 - 1;
     			mouse.y = - ( ( e.clientY - renderer.domElement.offsetTop ) / renderer.domElement.clientHeight ) * 2 + 1;
 				
 				raycaster.setFromCamera( mouse, camera );
-				var intersects = raycaster.intersectObjects( boardTilesFlattened, true );
-				if ( !checkmate && intersects.length > 0 ) {
-					// selecting a piece to move; checks k to make sure no animation ongoing
-					if (k == 0) {
-						if (toMove == null) {
-							sourceSquare = intersects[0].object.square;
-							toMove = board[sourceSquare[0] - 1][sourceSquare[1] - 1];
-							if (toMove != null) {
-								if (toMove.color != currentPlayer) {
-									sourceSquare = null;
-									toMove = null;	
+				var intersects;
+				if (toPromote) {
+					intersects = raycaster.intersectObjects( promotionPieces, true );
+
+					if ( intersects.length > 0 ) {
+						var parentPosition = intersects[0].object.parent.position;
+						var chosenPromotion;
+						var color, piece;
+						for (var i = 0 ; i < promotionPieces.length; i++) {
+							promotionPosition = promotionPieces[i].position;
+							if (Math.abs(parentPosition.x - promotionPosition.x) < EPS &&
+								Math.abs(parentPosition.y - promotionPosition.y) < EPS &&
+								Math.abs(parentPosition.z - promotionPosition.z) < EPS) 
+
+								piece = promotionOptions[i];
+						}
+
+						if (currentPlayer == "W") opponentColor = "Black";
+						else                      opponentColor = "White";
+
+						if (piece == "Knight" || piece == "Rook")
+							 color = `Off${opponentColor}`;
+						else color = opponentColor;
+
+						material = `models/${color}.mtl`;
+						file     = `models/${piece}.obj`;
+
+						var mtlLoader = new THREE.MTLLoader();
+
+						mtlLoader.load(material, function( materials ) {
+							materials.preload();
+							var loader = new THREE.OBJLoader();
+							loader.setMaterials(materials);
+							loader.load(file, function(object) {
+								if (color == "OffBlack" || color == "Black")
+									object.color = "B";
+								else object.color = "W";
+								object.piece = piece;
+
+								object.scale.multiplyScalar(7.5);
+								xyzFromSquare(object, promotionSquare[0],promotionSquare[1]);
+								object.position.y += 10.0;
+								scene.remove(board[promotionSquare[0]-1][promotionSquare[1]-1]);
+								board[promotionSquare[0] - 1][promotionSquare[1] - 1] = object;
+
+								scene.add(object);
+								
+								for (var i = 0 ; i < promotionPieces.length; i++) {
+									scene.remove(promotionPieces[i]);
+								}
+								promotionPieces = [];
+
+								// promotion can result in check OR checkmate
+								var checkSquare = getCheck();
+								if (checkSquare != null) {
+									inCheck = true;
+									boardTiles[checkSquare[0]-1][checkSquare[1]-1].material = checkMaterial;
+								}
+								checkmate = checkCheckmate();
+							});
+						});
+
+						toPromote = false;
+					}
+				}
+
+				else {
+					intersects = raycaster.intersectObjects( boardTilesFlattened, true );
+					if ( !checkmate && intersects.length > 0 ) {
+						// selecting a piece to move; checks k to make sure no animation ongoing
+						if (k == 0) {
+							if (toMove == null) {
+								sourceSquare = intersects[0].object.square;
+								toMove = board[sourceSquare[0] - 1][sourceSquare[1] - 1];
+								if (toMove != null) {
+									if (toMove.color != currentPlayer) {
+										sourceSquare = null;
+										toMove = null;	
+									}
+									else {
+										getLegal(toMove, sourceSquare, false);
+										highlightLegal();
+	
+										isSelected = true;
+										addProton(sourceSquare);
+									}
+								}
+							}
+	
+							else {
+								isSelected = false;
+								emitter.removeAllParticles();
+								emitter.destroy();
+								
+								destinationSquare = intersects[0].object.square;
+								var isLegal = legalBoard[destinationSquare[0]-1][destinationSquare[1]-1];
+								if (!isLegal) {
+									toMove            = null;
+									sourceSquare      = null;
+									destinationSquare = null;
 								}
 								else {
-									getLegal(toMove, sourceSquare, false);
-									highlightLegal();
-
-									isSelected = true;
-									addProton(sourceSquare);
-								}
-							}
-						}
-
-						else {
-							isSelected = false;
-							emitter.removeAllParticles();
-							emitter.destroy();
-							
-							destinationSquare = intersects[0].object.square;
-							var isLegal = legalBoard[destinationSquare[0]-1][destinationSquare[1]-1];
-							if (!isLegal) {
-								toMove            = null;
-								sourceSquare      = null;
-								destinationSquare = null;
-							}
-							else {
-								if (toMove.piece == "King") {
-									var xDist = (Math.abs(sourceSquare[0] - destinationSquare[0]));
-									var yDist = (Math.abs(sourceSquare[1] - destinationSquare[1]));
-
-									if (currentPlayer == "W") {
-										whiteCanFirstCastle = false;
-										whiteCanLastCastle  = false;
-									}
-									else {
-										blackCanFirstCastle = false;
-										blackCanLastCastle  = false;
-									}
-
-									// case of performing castling
-									if (xDist == 2 && yDist == 0) {
-										toCastle     = [null,null];
-										toCastleDest = [null,null];
-
+									if (toMove.piece == "King") {
+										var xDist = (Math.abs(sourceSquare[0] - destinationSquare[0]));
+										var yDist = (Math.abs(sourceSquare[1] - destinationSquare[1]));
+	
 										if (currentPlayer == "W") {
-											toCastle[1]     = 1;
-											toCastleDest[1] = 1;
+											whiteCanFirstCastle = false;
+											whiteCanLastCastle  = false;
 										}
 										else {
-											toCastle[1]     = 8;
-											toCastleDest[1] = 8;
+											blackCanFirstCastle = false;
+											blackCanLastCastle  = false;
 										}
-
-										if (destinationSquare[0] == 3) {
-											toCastle[0]     = 1;
-											toCastleDest[0] = 4;
+	
+										// case of performing castling
+										if (xDist == 2 && yDist == 0) {
+											toCastle     = [null,null];
+											toCastleDest = [null,null];
+	
+											if (currentPlayer == "W") {
+												toCastle[1]     = 1;
+												toCastleDest[1] = 1;
+											}
+											else {
+												toCastle[1]     = 8;
+												toCastleDest[1] = 8;
+											}
+	
+											if (destinationSquare[0] == 3) {
+												toCastle[0]     = 1;
+												toCastleDest[0] = 4;
+											}
+											else {
+												toCastle[0]     = 8;
+												toCastleDest[0] = 6;
+											}
+										}
+									}
+	
+									if (toMove.piece == "Rook") {
+										if (currentPlayer == "W") {
+											if (sourceSquare[1] == 1) whiteCanFirstCastle  = false;
+											if (sourceSquare[1] == 8) whiteCanLastCastle = false;
 										}
 										else {
-											toCastle[0]     = 8;
-											toCastleDest[0] = 6;
+											if (sourceSquare[1] == 1) blackCanFirstCastle  = false;
+											if (sourceSquare[1] == 8) blackCanLastCastle = false;
 										}
 									}
+	
+									inCheck = false;
 								}
-
-								if (toMove.piece == "Rook") {
-									if (currentPlayer == "W") {
-										if (sourceSquare[1] == 1) whiteCanFirstCastle  = false;
-										if (sourceSquare[1] == 8) whiteCanLastCastle = false;
-									}
-									else {
-										if (sourceSquare[1] == 1) blackCanFirstCastle  = false;
-										if (sourceSquare[1] == 8) blackCanLastCastle = false;
-									}
-								}
-
-								inCheck = false;
+	
+								resetLegal();
+								highlightLegal();
 							}
-
-							resetLegal();
-							highlightLegal();
 						}
-					}
-				} 
+					} 
+				}
 			}
 
 			function addProton(square) {
@@ -800,6 +894,25 @@
 					if (toCastle != null) {
 						board[toCastle[0] - 1][toCastle[1] - 1] = null;
 						board[toCastleDest[0] - 1][toCastleDest[1] - 1] = castleRook;
+					}
+
+					// check if pawn promotion is possible
+					var objOptions = [];
+					if (toMove.piece == "Pawn" && 
+						((toMove.color == "W" && destinationSquare[1] == 8) ||
+						 (toMove.color == "B" && destinationSquare[1] == 1))) {
+						for (var i = 0; i < promotionOptions.length; i++) {
+							var baseObj = pieceObjects[`${toMove.color}${promotionOptions[i]}`];
+							baseObj.position.x = 125.0 * (i - 1.5) + toMove.position.x;
+							baseObj.position.y = 200.0 + toMove.position.y;
+							baseObj.position.z = toMove.position.z;
+							
+							promotionPieces.push(baseObj);
+							scene.add(baseObj);
+						}
+
+						promotionSquare = destinationSquare;
+						toPromote = true;
 					}
 
 					toMove            = null;
